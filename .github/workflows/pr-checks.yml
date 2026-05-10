@@ -1,0 +1,164 @@
+name: PR Checks (feature → dev)
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+jobs:
+  # ─────────────────────────────────────────────
+  # 1. LINT
+  # ─────────────────────────────────────────────
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: ci-cd-pipeline/backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ci-cd-pipeline/backend
+        run: npm ci
+
+      - name: Run backend lint
+        working-directory: ci-cd-pipeline/backend
+        run: npm run lint
+
+      - name: Set up Node.js (frontend)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: ci-cd-pipeline/frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: ci-cd-pipeline/frontend
+        run: npm ci
+
+      - name: Run frontend lint
+        working-directory: ci-cd-pipeline/frontend
+        run: npm run lint
+
+  # ─────────────────────────────────────────────
+  # 2. NPM AUDIT
+  # ─────────────────────────────────────────────
+  audit:
+    name: npm audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Audit backend
+        working-directory: ci-cd-pipeline/backend
+        run: npm audit --audit-level=high
+
+      - name: Audit frontend
+        working-directory: ci-cd-pipeline/frontend
+        run: npm audit --audit-level=high
+
+  # ─────────────────────────────────────────────
+  # 3. SNYK SECURITY SCAN
+  # ─────────────────────────────────────────────
+  snyk:
+    name: Snyk Security Analysis
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install backend dependencies
+        working-directory: ci-cd-pipeline/backend
+        run: npm ci
+
+      - name: Run Snyk on backend
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --project-name=backend
+          command: test
+        # Use 'monitor' instead of 'test' if you want to track issues in the Snyk dashboard
+        # command: monitor
+
+      - name: Install frontend dependencies
+        working-directory: ci-cd-pipeline/frontend
+        run: npm ci
+
+      - name: Run Snyk on frontend
+        uses: snyk/actions/node@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high --project-name=frontend
+          command: test
+
+  # ─────────────────────────────────────────────
+  # 4. TESTS
+  # ─────────────────────────────────────────────
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: ci-cd-pipeline/backend/package-lock.json
+
+      - name: Install backend dependencies
+        working-directory: ci-cd-pipeline/backend
+        run: npm ci
+
+      - name: Run backend tests
+        working-directory: ci-cd-pipeline/backend
+        run: npm test
+
+  # ─────────────────────────────────────────────
+  # 5. BUILD DOCKER IMAGES (validate only)
+  # ─────────────────────────────────────────────
+  docker-build:
+    name: Build Docker Images
+    runs-on: ubuntu-latest
+    needs: [lint, audit, snyk, test]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ci-cd-pipeline/backend
+          push: false
+          tags: backend:pr-${{ github.event.pull_request.number }}
+
+      - name: Build frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ci-cd-pipeline/frontend
+          push: false
+          tags: frontend:pr-${{ github.event.pull_request.number }}

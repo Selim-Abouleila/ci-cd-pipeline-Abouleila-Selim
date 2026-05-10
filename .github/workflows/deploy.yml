@@ -1,0 +1,58 @@
+name: Deploy to Docker Hub (main)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Build, inject secrets, and push to Docker Hub
+  # ─────────────────────────────────────────────
+  deploy:
+    name: Build & Push Production Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Inject secrets into .env files before building ──────────────────
+      # GitHub Secrets are written to .env files that get COPY-ed into images.
+      # Never commit real .env files — they are in .gitignore / .dockerignore.
+      - name: Create backend .env from GitHub Secrets
+        run: |
+          cat <<EOF > ci-cd-pipeline/backend/.env
+          APP_SECRET_NAME=${{ secrets.APP_SECRET_NAME }}
+          EOF
+
+      # ── Docker Hub login ─────────────────────────────────────────────────
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # ── Set up Buildx for multi-platform / cache support ─────────────────
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── Build & push backend ─────────────────────────────────────────────
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ci-cd-pipeline/backend
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ci-cd-pipeline:backend-latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ci-cd-pipeline:backend-${{ github.sha }}
+
+      # ── Build & push frontend ────────────────────────────────────────────
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ci-cd-pipeline/frontend
+          push: true
+          tags: |
+            ${{ secrets.DOCKERHUB_USERNAME }}/ci-cd-pipeline:frontend-latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/ci-cd-pipeline:frontend-${{ github.sha }}

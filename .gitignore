@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+ci-cd-pipeline/frontend/build/
+ci-cd-pipeline/frontend/.cache/
+
+# Environment files — NEVER commit real secrets
+ci-cd-pipeline/backend/.env
+ci-cd-pipeline/frontend/.env
+
+# macOS metadata
+.DS_Store
+__MACOSX/
+
+# Logs
+*.log
+npm-debug.log*
