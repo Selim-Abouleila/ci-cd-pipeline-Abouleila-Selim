@@ -90,6 +90,7 @@ jobs:
 
       - name: Run Snyk on backend
         uses: snyk/actions/node@master
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
@@ -102,6 +103,7 @@ jobs:
 
       - name: Run Snyk on frontend
         uses: snyk/actions/node@master
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:

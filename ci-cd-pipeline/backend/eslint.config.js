@@ -1,6 +1,6 @@
-import js from "@eslint/js";
+const js = require("@eslint/js");
 
-export default [
+module.exports = [
   js.configs.recommended,
   {
     languageOptions: {
@@ -14,6 +14,15 @@ export default [
         __filename: "readonly",
         process: "readonly",
         console: "readonly",
+        test: "readonly",
+        expect: "readonly",
+        describe: "readonly",
+        it: "readonly",
+        beforeAll: "readonly",
+        afterAll: "readonly",
+        beforeEach: "readonly",
+        afterEach: "readonly",
+        jest: "readonly"
       },
     },
     rules: {},
