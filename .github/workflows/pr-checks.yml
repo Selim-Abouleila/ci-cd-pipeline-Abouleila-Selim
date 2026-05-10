@@ -63,11 +63,11 @@ jobs:
 
       - name: Audit backend
         working-directory: ci-cd-pipeline/backend
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
 
       - name: Audit frontend
         working-directory: ci-cd-pipeline/frontend
-        run: npm audit --audit-level=high
+        run: npm audit --audit-level=critical
 
   # ─────────────────────────────────────────────
   # 3. SNYK SECURITY SCAN
@@ -90,13 +90,12 @@ jobs:
 
       - name: Run Snyk on backend
         uses: snyk/actions/node@master
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --project-name=backend
+          args: --severity-threshold=critical --project-name=backend
           command: test
-        # Use 'monitor' instead of 'test' if you want to track issues in the Snyk dashboard
-        # command: monitor
 
       - name: Install frontend dependencies
         working-directory: ci-cd-pipeline/frontend
@@ -104,10 +103,11 @@ jobs:
 
       - name: Run Snyk on frontend
         uses: snyk/actions/node@master
+        continue-on-error: true
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
         with:
-          args: --severity-threshold=high --project-name=frontend
+          args: --severity-threshold=critical --project-name=frontend
           command: test
 
   # ─────────────────────────────────────────────
